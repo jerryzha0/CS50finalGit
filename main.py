@@ -30,24 +30,36 @@ def main():
     bas_table = pd.pivot_table(cjnl_fy2023, values=['gross_amount', 'tax_amount'], index=['fiscal_quarter', 'tax_name'],
                               aggfunc='sum', fill_value=0)
     # interim output for BAS report. Accountant need this for year-end work paper
+
+    bas_table.reset_index(inplace=True)
+    # print(bas_table)
     bas_table.to_csv("bas_table.csv", index=False)
 
     # bring in tax office data
     # bring in lodgement/sync date
     ato_ica_dates = ica_dates_list()
     ato_ica_dates.to_csv("ato_ica_dates.csv", index=False)
+    # print(ato_ica_dates)
 
     # chec if the line created after lodgement
     cjnl_fy2023_period = pd.merge(cjnl_fy2023, ato_ica_dates, on='period_id')
     cjnl_fy2023_period['not_sync'] = (
                 cjnl_fy2023_period['journal_create_date'] > cjnl_fy2023_period['Processed Date']).apply(
         lambda x: "ToAmend" if x else "Lodged")
+    cjnl_fy2023_nosync = cjnl_fy2023_period[cjnl_fy2023_period['not_sync'].str.contains(
+        'ToAmend', case=False, na=False)]
+    # export error transactions to csv
+    cjnl_fy2023_nosync.to_csv("cjnl_fy2023_nosync.csv", index=False)
 
-    bastable2 = pd.pivot_table(cjnl_fy2023_period, index=['fiscal_quarter_x', 'tax_name'], columns=['not_sync'],
+    bas_table2 = pd.pivot_table(cjnl_fy2023_period, index=['fiscal_quarter_x', 'tax_name'], columns=['not_sync'],
                                values=['gross_amount', 'tax_amount'], aggfunc='sum', fill_value=0)
-    bastable2 = bastable2.applymap(lambda x: '{:,.2f}'.format(x))
+    bas_table2 = bas_table2.applymap(lambda x: '{:,.2f}'.format(x))
     # Output for accountants to see the total amount of variance could be caused by use input in Xero after BAS lodged
-    bastable2.to_csv("bastable2.csv", index=False)
+    print(bas_table2)
+    bas_table2.reset_index(inplace=True)
+    bas_table2.to_csv("bas_amend.csv", index=False)
+
+    print("Calculation finished")
 
 
 
@@ -107,15 +119,19 @@ def ica_dates_list():
         # tax office outputs most of the time stay the same. but need error handle for name changes.
         ato_ica_dates = ato_ica[ato_ica['Description'].str.contains("Activity Statement")]
 
+
         # 4. workout period end dates
-        ato_ica_dates['period_end'] = ato_ica_dates['Description'].str[-9:]
-        # last 8 letter of the BASes showing the period end as "DD MMM YY"
-        ato_ica_dates.loc['period_end'] = pd.to_datetime(ato_ica_dates['period_end'], format='%d %b %y')
+        ato_ica_dates['period_text'] = ato_ica_dates['Description'].str[-9:]
+        # last 9 char of the BASes showing the period end as "DD MMM YY"
+        ato_ica_dates['period_end'] = pd.to_datetime(ato_ica_dates['period_text'], format='%d %b %y')
         # make sure it is a date type
-        ato_ica_dates.loc['quarter'] = ato_ica_dates['period_end'].dt.quarter
+
+        # issues here ####
+        ato_ica_dates['quarter'] = ato_ica_dates['period_end'].dt.quarter
         # quarter # of the year
         ato_ica_dates['fiscal_quarter'] = ato_ica_dates['quarter'].apply(lambda x: x - 2 if x > 2 else x + 2)
         # quarter # of the financial year
+        print(ato_ica_dates)
 
         # work out financial yaer
         ato_ica_dates['fiscal_year'] = ato_ica_dates['period_end'].apply(fiscal_year)
