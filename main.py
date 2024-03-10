@@ -53,7 +53,7 @@ def main():
 
     bas_table2 = pd.pivot_table(cjnl_fy2023_period, index=['fiscal_quarter_x', 'tax_name'], columns=['not_sync'],
                                values=['gross_amount', 'tax_amount'], aggfunc='sum', fill_value=0)
-    bas_table2 = bas_table2.applymap(lambda x: '{:,.2f}'.format(x))
+    bas_table2 = bas_table2.map(lambda x: '{:,.2f}'.format(x))
     # Output for accountants to see the total amount of variance could be caused by use input in Xero after BAS lodged
     print(bas_table2)
     bas_table2.reset_index(inplace=True)
@@ -127,7 +127,7 @@ def ica_dates_list():
         # make sure it is a date type
 
         # issues here ####
-        ato_ica_dates['quarter'] = ato_ica_dates['period_end'].dt.quarter
+        ato_ica_dates.loc[:, 'quarter'] = ato_ica_dates['period_end'].dt.quarter
         # quarter # of the year
         ato_ica_dates['fiscal_quarter'] = ato_ica_dates['quarter'].apply(lambda x: x - 2 if x > 2 else x + 2)
         # quarter # of the financial year
