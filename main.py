@@ -117,8 +117,8 @@ def ica_dates_list():
 
         # 3. filter lines only included "Activity Statement".
         # tax office outputs most of the time stay the same. but need error handle for name changes.
-        ato_ica_dates = ato_ica[ato_ica['Description'].str.contains("Activity Statement")]
-
+        ato_ica_dates = ato_ica[ato_ica['Description'].str.contains("Activity Statement")].copy()
+        # SettingWithCopyWarning took me a long time to understand and fix
 
         # 4. workout period end dates
         ato_ica_dates['period_text'] = ato_ica_dates['Description'].str[-9:]
@@ -126,8 +126,7 @@ def ica_dates_list():
         ato_ica_dates['period_end'] = pd.to_datetime(ato_ica_dates['period_text'], format='%d %b %y')
         # make sure it is a date type
 
-        # issues here ####
-        ato_ica_dates.loc[:, 'quarter'] = ato_ica_dates['period_end'].dt.quarter
+        ato_ica_dates['quarter'] = ato_ica_dates['period_end'].dt.quarter
         # quarter # of the year
         ato_ica_dates['fiscal_quarter'] = ato_ica_dates['quarter'].apply(lambda x: x - 2 if x > 2 else x + 2)
         # quarter # of the financial year
